@@ -1,0 +1,54 @@
+name: Kiem tra va Deploy
+
+# 1. Mỗi lần push lên nhánh main, workflow sẽ tự chạy.
+on:
+  push:
+    branches: [main]
+
+# 2. Quyền cần thiết để triển khai lên GitHub Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  # ===== JOB 1: KIỂM TRA (CI) =====
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lay code ve
+        uses: actions/checkout@v4
+
+      - name: Kiem tra du file
+        run: |
+          for f in index.html style.css script.js; do
+            if [ ! -f "$f" ]; then
+              echo "❌ Thieu file $f"
+              exit 1
+            fi
+          done
+          echo "✅ Du 3 file"
+
+      - name: Kiem tra the title
+        run: |
+          if ! grep -q "<title>" index.html; then
+            echo "❌ index.html thieu the <title>"
+            exit 1
+          fi
+          echo "✅ Co the title"
+
+  # ===== JOB 2: DEPLOY (CD) =====
+  deploy:
+    needs: check # Chỉ chạy khi job check thành công.
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4
